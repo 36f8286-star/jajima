@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>그만 자. - AI 모델 체험</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+  <style>
+    /* 기본 스타일 및 반응형 레이아웃 설정 */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      background-color: #f4f6f8;
+      color: #333;
+      padding: 16px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* 카드 스타일 */
+    .card {
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    /* 메인 체험 영역 강조 */
+    .card.main-experience {
+      border: 2px solid #2563eb;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      color: #1e293b;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 6px;
+    }
+
+    p {
+      font-size: 0.95rem;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* 입력 모드 선택 탭 */
+    .tab-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      background-color: #f8fafc;
+      color: #475569;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background-color: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    /* 버튼 스타일 */
+    .action-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+
+    .btn-start {
+      background-color: #2563eb;
+      color: #ffffff;
+    }
+
+    .btn-start:hover {
+      background-color: #1d4ed8;
+    }
+
+    .btn-stop {
+      background-color: #ef4444;
+      color: #ffffff;
+    }
+
+    .btn-stop:hover {
+      background-color: #dc2626;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .file-label {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background-color: #059669;
+      color: #ffffff;
+      text-align: center;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+
+    .file-label:hover {
+      background-color: #047857;
+    }
+
+    /* 미디어 표시 영역 (카메라/이미지) */
+    .media-container {
+      width: 100%;
+      height: 280px;
+      background-color: #0f172a;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 16px;
+      position: relative;
+    }
+
+    .media-container canvas,
+    .media-container img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    /* 상태 및 오류 메시지 */
+    .status-message {
+      font-size: 0.9rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .status-info {
+      background-color: #eff6ff;
+      color: #1d4ed8;
+      display: block;
+    }
+
+    .status-error {
+      background-color: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+      display: block;
+    }
+
+    /* 결과 표시 영역 */
+    .result-container {
+      background-color: #f8fafc;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .top-prediction {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #1e293b;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+
+    .disclaimer {
+      font-size: 0.8rem;
+      color: #64748b;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    /* 그래프 스타일 */
+    .label-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .bar-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .bar-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .bar-background {
+      width: 100%;
+      height: 16px;
+      background-color: #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background-color: #94a3b8;
+      width: 0%;
+      transition: width 0.2s ease;
+      border-radius: 8px;
+    }
+
+    .bar-fill.highlight {
+      background-color: #2563eb;
+    }
+
+    /* 하단 정보 영역 */
+    .info-list {
+      list-style-type: disc;
+      padding-left: 20px;
+      font-size: 0.9rem;
+      color: #475569;
+    }
+
+    .info-list li {
+      margin-bottom: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <div class="card">
+      <h1>그만 자.</h1>
+      <p>수업 시작 후에도 엎드려 있는 학생을 찾아내어 수업 준비를 돕는 모델입니다.</p>
+    </div>
+
+    <div class="card">
+      <h2>프로젝트 정보</h2>
+      <p><strong>해결하려는 문제:</strong> 수업 종이 쳤을 때, 아직 엎드려 있는 학생들이 있음.</p>
+      <p><strong>주요 사용자:</strong> 학급반장</p>
+    </div>
+
+    <div class="card main-experience">
+      <h2>모델 체험하기</h2>
+
+      <div id="status-box" class="status-message status-info">
+        모델을 불러오는 중입니다. 잠시만 기다려주세요...
+      </div>
+
+      <div class="tab-container">
+        <button id="tab-webcam" class="tab-btn active" onclick="switchMode('webcam')">카메라 입력</button>
+        <button id="tab-file" class="tab-btn" onclick="switchMode('file')">파일 업로드</button>
+      </div>
+
+      <div id="section-webcam">
+        <button id="btn-webcam-toggle" class="action-btn btn-start" onclick="toggleWebcam()">카메라 시작</button>
+      </div>
+
+      <div id="section-file" style="display: none;">
+        <label for="image-upload" class="file-label">사진 파일 선택하기</label>
+        <input type="file" id="image-upload" class="file-input" accept="image/*" onchange="handleFileUpload(event)">
+      </div>
+
+      <div class="media-container" id="media-container">
+        <img id="image-preview" style="display: none;" alt="업로드 이미지 미리보기">
+      </div>
+
+      <div class="result-container">
+        <div id="top-result" class="top-prediction">예측 결과 대기 중...</div>
+        <div class="disclaimer">* 가장 높은 확률이 반드시 정답은 아닙니다.</div>
+        <div id="label-container" class="label-container"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>모델의 한계 및 주의사항</h2>
+      <ul class="info-list">
+        <li><strong>모델의 한계:</strong> 10명 이상의 사람들이 동시에 다른 동작을 하고 있을 때에도 구분할 수 있을까?</li>
+        <li><strong>사람이 확인해야 할 부분:</strong> 불분명한 동작을 하고 있는가?</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <p><strong>팀명:</strong> bb</p>
+      <p><strong>팀원:</strong> 양해원, 정민제, 이채원</p>
+    </div>
+
+  </div>
+
+  <script>
+    // 티처블 머신 모델 URL
+    const MODEL_URL = "https://teachablemachine.withgoogle.com/models/tp6sbyHSEz/";
+
+    let model, webcam, maxPredictions;
+    let isWebcamRunning = false;
+    let currentMode = 'webcam'; // 'webcam' 또는 'file'
+    let objectUrl = null;
+
+    // 페이지 로드 시 모델 불러오기 시작
+    window.addEventListener('DOMContentLoaded', initModel);
+
+    // 모델 초기화 함수
+    async function initModel() {
+      const statusBox = document.getElementById('status-box');
+      try {
+        const modelURL = MODEL_URL + "model.json";
+        const metadataURL = MODEL_URL + "metadata.json";
+
+        // Teachable Machine 라이브러리로 모델 로드
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // 결과 UI 초기화 (메타데이터 기준)
+        setupResultUI();
+
+        statusBox.innerText = "모델을 성공적으로 불러왔습니다.";
+        statusBox.className = "status-message status-info";
+        setTimeout(() => { statusBox.style.display = 'none'; }, 3000);
+      } catch (error) {
+        showError("모델을 불러오는 데 실패했습니다. 네트워크 연결 및 주소를 확인해 주세요.");
+      }
+    }
+
+    // 예측 결과 UI 틀 생성
+    function setupResultUI() {
+      const labelContainer = document.getElementById('label-container');
+      labelContainer.innerHTML = '';
+
+      for (let i = 0; i < maxPredictions; i++) {
+        const classTitle = model.getClassLabels()[i];
+        
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bar-wrapper';
+
+        wrapper.innerHTML = `
+          <div class="bar-header">
+            <span>${classTitle}</span>
+            <span id="percent-${i}">0%</span>
+          </div>
+          <div class="bar-background">
+            <div id="bar-${i}" class="bar-fill"></div>
+          </div>
+        `;
+        labelContainer.appendChild(wrapper);
+      }
+    }
+
+    // 입력 모드 전환 (카메라 <-> 파일)
+    function switchMode(mode) {
+      if (currentMode === mode) return;
+      currentMode = mode;
+
+      // 탭 UI 전환
+      document.getElementById('tab-webcam').classList.toggle('active', mode === 'webcam');
+      document.getElementById('tab-file').classList.toggle('active', mode === 'file');
+
+      // 입력 섹션 전환
+      document.getElementById('section-webcam').style.display = mode === 'webcam' ? 'block' : 'none';
+      document.getElementById('section-file').style.display = mode === 'file' ? 'block' : 'none';
+
+      // 기존 작업 정리
+      stopWebcam();
+      clearImagePreview();
+      resetResults();
+    }
+
+    // 카메라 시작 / 중지 토글
+    async function toggleWebcam() {
+      if (isWebcamRunning) {
+        stopWebcam();
+      } else {
+        await startWebcam();
+      }
+    }
+
+    // 카메라 시작
+    async function startWebcam() {
+      if (!model) {
+        showError("모델이 아직 준비되지 않았습니다.");
+        return;
+      }
+
+      const btn = document.getElementById('btn-webcam-toggle');
+      btn.disabled = true;
+      btn.innerText = "카메라 연결 중...";
+
+      try {
+        // 웹캠 설정
+        const flip = true;
+        webcam = new tmImage.Webcam(280, 280, flip);
+        await webcam.setup();
+        await webcam.play();
+
+        // 캔버스 추가
+        const mediaContainer = document.getElementById('media-container');
+        clearMediaContainer();
+        mediaContainer.appendChild(webcam.canvas);
+
+        isWebcamRunning = true;
+        btn.innerText = "카메라 중지";
+        btn.className = "action-btn btn-stop";
+        btn.disabled = false;
+
+        // 실시간 예측 루프 시작
+        window.requestAnimationFrame(webcamLoop);
+      } catch (error) {
+        showError("카메라 접근 권한이 거부되었거나 지원하지 않는 장치입니다.");
+        btn.innerText = "카메라 시작";
+        btn.className = "action-btn btn-start";
+        btn.disabled = false;
+      }
+    }
+
+    // 실시간 카메라 예측 루프
+    async function webcamLoop() {
+      if (isWebcamRunning && webcam) {
+        webcam.update();
+        await predict(webcam.canvas);
+        window.requestAnimationFrame(webcamLoop);
+      }
+    }
+
+    // 카메라 중지
+    function stopWebcam() {
+      if (webcam && isWebcamRunning) {
+        webcam.stop();
+        isWebcamRunning = false;
+      }
+
+      const btn = document.getElementById('btn-webcam-toggle');
+      if (btn) {
+        btn.innerText = "카메라 시작";
+        btn.className = "action-btn btn-start";
+        btn.disabled = false;
+      }
+
+      clearMediaContainer();
+    }
+
+    // 파일 업로드 처리
+    async function handleFileUpload(event) {
+      stopWebcam();
+
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // 파일 형식 검증
+      if (!file.type.startsWith('image/')) {
+        showError("올바른 이미지 파일(JPG, PNG 등)을 선택해 주세요.");
+        return;
+      }
+
+      try {
+        clearImagePreview();
+
+        // Object URL 생성 및 처리
+        objectUrl = URL.createObjectURL(file);
+        const imgElement = document.getElementById('image-preview');
+        
+        imgElement.onload = async () => {
+          if (!model) {
+            showError("모델이 준비되지 않았습니다.");
+            return;
+          }
+          await predict(imgElement);
+        };
+
+        imgElement.onerror = () => {
+          showError("이미지 파일을 읽을 수 없습니다.");
+        };
+
+        imgElement.src = objectUrl;
+        imgElement.style.display = 'block';
+
+        const mediaContainer = document.getElementById('media-container');
+        clearMediaContainer();
+        mediaContainer.appendChild(imgElement);
+
+      } catch (error) {
+        showError("이미지 처리 중 오류가 발생했습니다.");
+      }
+    }
+
+    // 이미지 미리보기 및 Object URL 정리
+    function clearImagePreview() {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+      }
+      const imgElement = document.getElementById('image-preview');
+      if (imgElement) {
+        imgElement.src = '';
+        imgElement.style.display = 'none';
+      }
+    }
+
+    // 미디어 컨테이너 비우기
+    function clearMediaContainer() {
+      const mediaContainer = document.getElementById('media-container');
+      mediaContainer.innerHTML = '';
+      const imgElement = document.createElement('img');
+      imgElement.id = 'image-preview';
+      imgElement.style.display = 'none';
+      mediaContainer.appendChild(imgElement);
+    }
+
+    // 공통 예측 처리 함수 (캔버스 및 이미지 요소 모두 가능)
+    async function predict(imageElement) {
+      if (!model) return;
+
+      const prediction = await model.predict(imageElement);
+      let highestProb = -1;
+      let highestClass = "";
+
+      for (let i = 0; i < maxPredictions; i++) {
+        const probability = prediction[i].probability;
+        const percent = Math.round(probability * 100);
+
+        // 백분율 및 그래프 업데이트
+        const percentElement = document.getElementById(`percent-${i}`);
+        const barElement = document.getElementById(`bar-${i}`);
+
+        if (percentElement && barElement) {
+          percentElement.innerText = `${percent}%`;
+          barElement.style.width = `${percent}%`;
+
+          // 가장 높은 확률 클래스 강조
+          if (probability > highestProb) {
+            highestProb = probability;
+            highestClass = prediction[i].className;
+          }
+        }
+      }
+
+      // 강조 스타일 적용
+      for (let i = 0; i < maxPredictions; i++) {
+        const barElement = document.getElementById(`bar-${i}`);
+        if (barElement) {
+          if (prediction[i].className === highestClass) {
+            barElement.classList.add('highlight');
+          } else {
+            barElement.classList.remove('highlight');
+          }
+        }
+      }
+
+      // 최고 결과 텍스트 표시
+      const topResultElement = document.getElementById('top-result');
+      const topPercent = Math.round(highestProb * 100);
+      topResultElement.innerText = `예측: ${highestClass} (${topPercent}%)`;
+    }
+
+    // 결과 UI 초기화
+    function resetResults() {
+      document.getElementById('top-result').innerText = "예측 결과 대기 중...";
+      for (let i = 0; i < maxPredictions; i++) {
+        const percentElement = document.getElementById(`percent-${i}`);
+        const barElement = document.getElementById(`bar-${i}`);
+        if (percentElement && barElement) {
+          percentElement.innerText = "0%";
+          barElement.style.width = "0%";
+          barElement.classList.remove('highlight');
+        }
+      }
+    }
+
+    // 에러 메시지 표시 함수
+    function showError(message) {
+      const statusBox = document.getElementById('status-box');
+      statusBox.innerText = message;
+      statusBox.className = "status-message status-error";
+      statusBox.style.display = 'block';
+    }
+  </script>
+
+</body>
+</html>
